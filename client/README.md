@@ -12,15 +12,13 @@ A Firefox extension that automatically blocks YouTube videos marked as AI-genera
 
 ## Installation
 
-1. **Prerequisites**: Ensure your Anti-Slop API server is running on `http://localhost:8000`
-
-2. **Load the extension in Firefox**:
+1. **Load the extension in Firefox**:
    - Open Firefox and navigate to `about:debugging`
    - Click "This Firefox"
    - Click "Load Temporary Add-on"
    - Navigate to the `client` folder and select `manifest.json`
 
-3. **Verify installation**:
+2. **Verify installation**:
    - Click the extension icon in Firefox toolbar
    - You should see the popup showing "Connected" status
 
@@ -96,6 +94,6 @@ client/
 
 ## Security Notes
 
-- The extension only communicates with your local API server
+- The extension only communicates with the API server
 - No data is sent to external servers
-- All blocking decisions are made by your local API
+- All blocking decisions are made by clientside, based on what the api responds with, the ability to turn off blocking is coming soon (for now just disable the extension)
