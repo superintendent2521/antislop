@@ -1,19 +1,39 @@
-from fastapi import FastAPI, HTTPException, status, Request
+from fastapi import FastAPI, HTTPException, status, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from datetime import datetime
 import re
+import os
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from database import db
+from auth import get_api_key, require_api_key
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI()
 
+# Configure CORS with specific allowed origins
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8080").split(",")
+allowed_origins = [origin.strip() for origin in allowed_origins if origin.strip()]
+
+# Allow all origins in development
+if os.getenv("ENVIRONMENT") == "development":
+    allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=allowed_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# Add rate limiter to app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 def is_valid_youtube_id(video_id):
     """Validate YouTube video ID format"""
@@ -25,8 +45,9 @@ async def startup_db_client():
     await db.create_indexes()
 
 @app.post("/api/videos")
+@limiter.limit("10/minute")
 async def add_video(request: Request):
-    """Add a new YouTube video"""
+    """Add a new YouTube video, or return the existing one if already added."""
     try:
         data = await request.json()
         
@@ -46,6 +67,14 @@ async def add_video(request: Request):
         
         blocked = data.get("blocked", False)
         
+        existing = await db.get_video(video_id)
+        if existing:
+            existing["_id"] = str(existing["_id"])
+            return {
+                "message": "This video has already been added",
+                "existing": existing
+            }
+        
         video_doc = {
             "videoId": video_id,
             "blocked": blocked,
@@ -54,15 +83,8 @@ async def add_video(request: Request):
             "updatedAt": datetime.utcnow()
         }
         
-        if await db.video_exists(video_id):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Video already exists"
-            )
-        
-        await db.add_video(video_doc)
-        video_doc["_id"] = str(video_doc.get("_id", ""))
-        
+        inserted_id = await db.add_video(video_doc)
+        video_doc["_id"] = str(inserted_id)
         return video_doc
         
     except Exception as e:
@@ -70,9 +92,9 @@ async def add_video(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
-
 @app.get("/api/videos/{video_id}")
-async def get_video(video_id: str):
+@limiter.limit("30/minute")
+async def get_video(video_id: str, request: Request):
     """Get a video by ID - anonymous response"""
     if not is_valid_youtube_id(video_id):
         raise HTTPException(
@@ -93,12 +115,14 @@ async def get_video(video_id: str):
     }
 
 @app.get("/api/stats")
-async def get_stats():
+@limiter.limit("20/minute")
+async def get_stats(request: Request):
     """Get statistics"""
     return await db.get_stats()
 
 @app.put("/api/videos/{video_id}")
-async def update_video_status(video_id: str, request: Request):
+@limiter.limit("5/minute")
+async def update_video_status(video_id: str, request: Request, api_key: str = Depends(require_api_key)):
     """Update video blocked status"""
     try:
         if not is_valid_youtube_id(video_id):

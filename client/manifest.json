@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Anti-Slop YouTube Blocker",
+  "version": "1.0.0",
+  "description": "Blocks YouTube videos marked as AI slop content",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "antislop-youtube-blocker@example.com",
+      "strict_min_version": "109.0"
+    }
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "http://localhost:8000/*"
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["blocked.html", "blocked.css"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Anti-Slop YouTube Blocker"
+  }
+}

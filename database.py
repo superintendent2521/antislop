@@ -1,7 +1,7 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from dotenv import load_dotenv
-
+from datetime import datetime
 load_dotenv()
 
 class Database:
@@ -23,7 +23,7 @@ class Database:
     async def update_video_status(self, video_id, blocked):
         result = await self.videos.update_one(
             {"videoId": video_id},
-            {"$set": {"blocked": blocked, "updatedAt": "datetime.utcnow()"}}
+            {"$set": {"blocked": blocked, "updatedAt": datetime.utcnow()}}
         )
         return result.modified_count
 
