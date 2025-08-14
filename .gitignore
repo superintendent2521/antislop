@@ -16,3 +16,5 @@ ENV/
 *.egg-info/
 dist/
 build/
+keys.json
+master_key.txt

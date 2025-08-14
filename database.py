@@ -35,4 +35,9 @@ class Database:
     async def video_exists(self, video_id):
         return await self.videos.find_one({"videoId": video_id}) is not None
 
+    async def remove_video(self, video_id):
+        #Not authed. should be done api side!!!!
+        result = await self.videos.delete_one({"videoId": video_id})
+        return result.deleted_count
+
 db = Database()
