@@ -68,7 +68,7 @@ client/
    - Go to `about:debugging`
    - Find your extension and click "Reload"
 
-## Troubleshooting
+## Development Troubleshooting
 
 ### Extension not working
 - Ensure the API server is running on `http://localhost:8000`
